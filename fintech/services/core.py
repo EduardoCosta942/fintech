@@ -1,32 +1,31 @@
 from .add_transaction import add_transaction
-from ..agent import AgentFactory
+from ..agent import AgentSingleton
 from ..exceptions import AgentRequestError
 from ..logger import log_error, log_debug, log_info
 
-_AGENT_FACTORY = None
+_AGENT_SINGLETON = None
+_TOOLS = [add_transaction]
 
+def _get_agent_singleton():
+    global _AGENT_SINGLETON
 
-def _get_agent_factory():
-    global _AGENT_FACTORY
-
-    if _AGENT_FACTORY is None:
+    if _AGENT_SINGLETON is None:
         log_info("Initializing AgentFactory instance")
-        _AGENT_FACTORY = AgentFactory()
-    else:
-        log_debug("Reusing existing AgentFactory instance")
-
-    return _AGENT_FACTORY
-
+        _AGENT_SINGLETON = AgentSingleton(_TOOLS).agent
+        return
+    
+    log_debug("Reusing existing AgentFactory instance")
 
 def request(user_prompt: str):
     log_info("Processing user request")
 
-    try:
-        agent = _get_agent_factory().create(tools=[add_transaction])
+    global _AGENT_SINGLETON
+    _get_agent_singleton()
 
+    try:
         log_debug("Agent created, invoking with user prompt")
 
-        response = agent.invoke(
+        response = _AGENT_SINGLETON.invoke(
             {"messages": [{"role": "human", "content": user_prompt}]},
             config={"configurable": {"thread_id": "develop"}, "recursion_limit": 8}
         )

@@ -9,9 +9,9 @@ from langgraph.checkpoint.memory import MemorySaver
 from ..logger import log_info, log_debug, log_warning, log_error
 
 
-class AgentFactory:
-    def __init__(self):
-        log_debug("Initializing AgentFactory")
+class AgentSingleton:
+    def __init__(self, tools=[]):
+        log_debug("Initializing AgentSingleton")
 
         self._gemini_key, self._groq_key, self._gemini_model, self._groq_model = get_ai_config()
 
@@ -19,7 +19,10 @@ class AgentFactory:
             f"Config loaded | Gemini: {bool(self._gemini_key)} | Groq: {bool(self._groq_key)}"
         )
 
+        self._tools = tools
         self._llm = self._get_llm()
+        self._memory_saver = MemorySaver()
+        self.agent = self._create()
 
     def _get_llm(self):
         log_debug("Selecting available LLM")
@@ -43,9 +46,6 @@ class AgentFactory:
                 temperature=1,
                 top_p=0.95
             )
-        
-        print(f"Gemini Key: {self._gemini_key}, Gemini Model: {self._gemini_model}")
-        print(f"Groq Key: {self._groq_key}, Groq Model: {self._groq_model}")
 
         if self._gemini_key and self._groq_key and self._gemini_model and self._groq_model:
             log_info("Using Gemini with Groq fallback")
@@ -67,7 +67,7 @@ class AgentFactory:
         log_debug("LLM successfully selected")
         return _llm
 
-    def create(self, tools=None):
+    def _create(self, tools=None):
         log_debug("Creating agent")
 
         tools = tools if tools is not None else []
@@ -78,7 +78,7 @@ class AgentFactory:
             model=self._llm,
             tools=tools,
             system_prompt=build_system_prompt(),
-            checkpointer=MemorySaver()
+            checkpointer=self._memory_saver
         )
 
         log_info("Agent created successfully")
