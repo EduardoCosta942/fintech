@@ -1,39 +1,57 @@
-try:
-    from dotenv import load_dotenv
-except ImportError:
-    def load_dotenv(*args, **kwargs):
-        return False
+from dotenv import load_dotenv
+from pathlib import Path
 import os
 
 from fintech.exceptions import EnvNotFoundError
 
-load_dotenv()
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 _ai_config = None
 
+
 def get_env_variable(name, default=None) -> str:
     value = os.getenv(name)
+
     if value is None:
-        raise EnvNotFoundError(f"Environment variable '{name}' is not set and no default value provided.")
+        raise EnvNotFoundError(
+            f"Environment variable '{name}' is not set and no default value provided."
+        )
+
     return value
+
 
 def get_env_int(name, default=None) -> int:
     value = os.getenv(name, default)
+
     if value is None:
-        raise EnvNotFoundError(f"Environment variable '{name}' is not set and no default value provided.")
+        raise EnvNotFoundError(
+            f"Environment variable '{name}' is not set and no default value provided."
+        )
+
     return int(value)
+
 
 def get_ai_config():
     global _ai_config
+
     if _ai_config is None:
         def load_config():
+            print("gemini_api_key:", os.getenv("GEMINI_API_KEY"))
+            print("groq_api_key:", os.getenv("GROQ_API_KEY"))
+            print("gemini_model:", os.getenv("GEMINI_MODEL"))
+            print("groq_model:", os.getenv("GROQ_MODEL"))
             return {
-                "GEMINI_API_KEY": get_env_variable("GEMINI_API_KEY"),
-                "GROQ_API_KEY": get_env_variable("GROQ_API_KEY"),
-                "GEMINI_MODEL": get_env_variable("GEMINI_MODEL"),
-                "GROQ_MODEL": get_env_variable("GROQ_MODEL")
+                "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY", None),
+                "GROQ_API_KEY": os.getenv("GROQ_API_KEY", None),
+                "GEMINI_MODEL": os.getenv("GEMINI_MODEL", None),
+                "GROQ_MODEL": os.getenv("GROQ_MODEL", None)
             }
-        
-        _ai_config = load_config().values()
-    return _ai_config
 
+        config = load_config()
+
+        if not config:
+            _ai_config = None
+        else:
+            _ai_config = list(config.values())
+
+    return _ai_config

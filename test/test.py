@@ -22,4 +22,4 @@ while True:
         response = request(user_prompt)
         print(response['messages'][-1].content)
     except Exception as e:
-        print(f"Erro ao processar a solicitação: {e}")
+        print(str(e))
