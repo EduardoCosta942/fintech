@@ -5,6 +5,8 @@ except ImportError:
         return False
 import os
 
+from fintech.exceptions import EnvNotFoundError
+
 load_dotenv()
 
 _ai_config = None
@@ -12,13 +14,13 @@ _ai_config = None
 def get_env_variable(name, default=None) -> str:
     value = os.getenv(name)
     if value is None:
-        raise ValueError(f"Environment variable '{name}' is not set and no default value provided.")
+        raise EnvNotFoundError(f"Environment variable '{name}' is not set and no default value provided.")
     return value
 
 def get_env_int(name, default=None) -> int:
     value = os.getenv(name, default)
     if value is None:
-        raise ValueError(f"Environment variable '{name}' is not set and no default value provided.")
+        raise EnvNotFoundError(f"Environment variable '{name}' is not set and no default value provided.")
     return int(value)
 
 def get_ai_config():
