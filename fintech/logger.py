@@ -2,7 +2,7 @@ import logging
 import sys
 from typing import Optional
 
-from fintech.enum import environment
+from fintech.enum import Environment
 from fintech.env_loader import get_env_variable
 from fintech.exceptions import EnvNotFoundError
 
@@ -34,7 +34,7 @@ class _LoggerManager:
             return logger
 
         try:
-            if (get_env_variable("ENV").lower() == environment.DEVELOPMENT.name.lower()):
+            if (get_env_variable("ENV").lower() == Environment.DEVELOPMENT.name.lower()):
                 logger.setLevel(logging.DEBUG)
             else:
                 logger.setLevel(logging.INFO)

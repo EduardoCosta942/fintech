@@ -36,10 +36,6 @@ def get_ai_config():
 
     if _ai_config is None:
         def load_config():
-            print("gemini_api_key:", os.getenv("GEMINI_API_KEY"))
-            print("groq_api_key:", os.getenv("GROQ_API_KEY"))
-            print("gemini_model:", os.getenv("GEMINI_MODEL"))
-            print("groq_model:", os.getenv("GROQ_MODEL"))
             return {
                 "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY", None),
                 "GROQ_API_KEY": os.getenv("GROQ_API_KEY", None),

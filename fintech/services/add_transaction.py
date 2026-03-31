@@ -1,81 +1,8 @@
-import psycopg2
 from typing import Optional
 from langchain.tools import tool
-
 from ..logger import log_error, log_debug, log_info, log_warning
-from ..env_loader import get_env_variable
 from ..models import Transaction
-
-TYPE_ALIASES = {}
-CATEGORIES_ALIASES = {}
-INVERSE_TYPE_ALIASES = {}
-INVERSE_CATEGORY_ALIASES = {}
-
-
-def _get_conn():
-    log_debug("Opening database connection")
-    return psycopg2.connect(get_env_variable("DATABASE_URL"), connect_timeout=5)
-
-
-def _define_constants() -> None:
-    log_debug("Loading type and category aliases from database")
-
-    type_aliases = {}
-    category_aliases = {}
-    inverse_type_aliases = {}
-    inverse_category_aliases = {}
-
-    with _get_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT id, type FROM transaction_types;")
-            for row in cur.fetchall():
-                type_aliases[row[0]] = row[1]
-                inverse_type_aliases[row[1]] = row[0]
-
-            cur.execute("SELECT id, name FROM categories;")
-            for row in cur.fetchall():
-                category_aliases[row[0]] = row[1]
-                inverse_category_aliases[row[1]] = row[0]
-
-            global TYPE_ALIASES, CATEGORIES_ALIASES, INVERSE_TYPE_ALIASES, INVERSE_CATEGORY_ALIASES
-            TYPE_ALIASES = type_aliases
-            CATEGORIES_ALIASES = category_aliases
-            INVERSE_TYPE_ALIASES = inverse_type_aliases
-            INVERSE_CATEGORY_ALIASES = inverse_category_aliases
-
-    log_info("Aliases loaded successfully")
-
-
-def _resolve_type_id(type_id: Optional[int], type_name: Optional[str]) -> Optional[int]:
-    if not TYPE_ALIASES:
-        log_debug("TYPE_ALIASES empty, loading constants")
-        _define_constants()
-
-    if TYPE_ALIASES.get(type_id):
-        log_debug(f"Resolved type_id directly: {type_id}")
-        return type_id
-
-    if type_name and INVERSE_TYPE_ALIASES.get(type_name):
-        resolved = INVERSE_TYPE_ALIASES[type_name]
-        log_debug(f"Resolved type_name '{type_name}' to id {resolved}")
-        return resolved
-
-    log_warning("Invalid transaction type provided")
-    return None
-
-
-def _resolve_category_id(category_id: int) -> Optional[int]:
-    if not CATEGORIES_ALIASES:
-        log_debug("CATEGORIES_ALIASES empty, loading constants")
-        _define_constants()
-
-    if CATEGORIES_ALIASES.get(category_id):
-        log_debug(f"Resolved category_id: {category_id}")
-        return category_id
-
-    log_warning("Invalid category_id provided")
-    return None
-
+from .utils import ALIASES, ALIAS_SERVICE, Database
 
 @tool("add_transaction", args_schema=Transaction)
 def add_transaction(
@@ -92,14 +19,14 @@ def add_transaction(
 
     log_info("Starting transaction insertion")
 
-    with _get_conn() as conn:
+    with Database.get_conn() as conn:
         with conn.cursor() as cur:
             try:
-                resolved_type_id = _resolve_type_id(type_id, type_name)
+                resolved_type_id = ALIAS_SERVICE.resolve_type_id(type_id, type_name)
 
                 if not resolved_type_id:
                     string = ""
-                    for key, value in TYPE_ALIASES.items():
+                    for key, value in ALIASES["type_aliases"].items():
                         string += f"{value} (id: {key}); "
 
                     error = ValueError({
@@ -110,11 +37,11 @@ def add_transaction(
                     log_warning("Transaction rejected due to invalid type")
                     raise error
 
-                resolved_category_id = _resolve_category_id(category_id)
+                resolved_category_id = ALIAS_SERVICE.resolve_category_id(category_id)
 
                 if not resolved_category_id:
                     string = ""
-                    for key, value in CATEGORIES_ALIASES.items():
+                    for key, value in ALIASES["category_aliases"].items():
                         string += f"{value} (id: {key}); "
 
                     error = ValueError({

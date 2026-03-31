@@ -22,7 +22,7 @@ class AgentSingleton:
         self._tools = tools
         self._llm = self._get_llm()
         self._memory_saver = MemorySaver()
-        self.agent = self._create()
+        self.agent = self._create(self._tools)
 
     def _get_llm(self):
         log_debug("Selecting available LLM")
@@ -67,7 +67,7 @@ class AgentSingleton:
         log_debug("LLM successfully selected")
         return _llm
 
-    def _create(self, tools=None):
+    def _create(self, tools):
         log_debug("Creating agent")
 
         tools = tools if tools is not None else []

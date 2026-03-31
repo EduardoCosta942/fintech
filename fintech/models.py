@@ -1,7 +1,9 @@
 from typing import Optional
 from pydantic import BaseModel, Field
+from .enum import ReadTransactionsFilter
 
 class Transaction(BaseModel):
+    readTransactionsFilter: ReadTransactionsFilter
     amount: float = Field(..., description="Valor da transação (use positivo).")
     source_text: str = Field(..., description="Texto original do usuário.")
     occurred_at: Optional[str] = Field(

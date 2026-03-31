@@ -1,10 +1,11 @@
 from .add_transaction import add_transaction
+from .read_transactions import read_transactions
 from ..agent import AgentSingleton
 from ..exceptions import AgentRequestError
 from ..logger import log_error, log_debug, log_info
 
 _AGENT_SINGLETON = None
-_TOOLS = [add_transaction]
+_TOOLS = [add_transaction, read_transactions]
 
 def _get_agent_singleton():
     global _AGENT_SINGLETON
