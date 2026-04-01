@@ -44,6 +44,7 @@ agenda e compromissos.
   * 3 (AMOUNT_GREATER_THAN): retorna transações com valor maior que o especificado
   * 4 (AMOUNT_LOWER_THAN): retorna transações com valor menor que o especificado
 - saldo_total: Retorna o saldo total do usuário. Refere-se a soma das transações de entrada subtraido pela soma das transações de saída.
+- saldo_diario: Retorna o saldo diário do usuário. E obrigatorio especificar alguma data e o parametro include_previus_days, que se for true, irá incluir o saldo dos dias anteriores a data especificada. Se for false, irá considerar apenas as transações do dia especificado.
 
 OBSERVAÇÃO: Em todas as tools, se retornarem algum erro, tente resolver o erro de forma recursiva, não precisa avisar ao usuário. 
 
