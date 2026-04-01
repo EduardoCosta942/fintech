@@ -50,7 +50,7 @@ class AliasService:
         self.category_aliases = data["category_aliases"]
         self.inverse_category_aliases = data["inverse_category_aliases"]
 
-    def resolve_type_id(self, type_id: Optional[int], type_name: Optional[str]) -> Optional[int]:
+    def resolve_type_id(self, type_name: Optional[str], type_id: Optional[int] = None) -> Optional[int]:
         if type_id in self.type_aliases:
             log_debug(f"Resolved type_id directly: {type_id}")
             return type_id
@@ -63,10 +63,15 @@ class AliasService:
         log_warning("Invalid transaction type provided")
         return None
 
-    def resolve_category_id(self, category_id: int) -> Optional[int]:
+    def resolve_category_id(self, category_id: int, category_name: Optional[str] = None) -> Optional[int]:
         if category_id in self.category_aliases:
             log_debug(f"Resolved category_id: {category_id}")
             return category_id
+
+        if category_name in self.inverse_category_aliases:
+            resolved = self.inverse_category_aliases[category_name]
+            log_debug(f"Resolved category_name '{category_name}' to id {resolved}")
+            return resolved
 
         log_warning("Invalid category_id provided")
         return None

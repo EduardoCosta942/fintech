@@ -1,17 +1,26 @@
 from typing import Optional
 from langchain.tools import tool
+from dataclasses import dataclass
 from ..logger import log_error, log_debug, log_info, log_warning
 from ..models import Transaction
 from .utils import ALIASES, ALIAS_SERVICE, Database
+from ..exceptions import MissingArgumentError
+from pydantic import Field
 
-@tool("add_transaction", args_schema=Transaction)
+@dataclass
+class AddTransactionArgs(Transaction):
+    amount: float = Field(..., description="Valor da transação.")
+    source_text: str = Field(..., description="Texto de origem da transação.")
+    type_name: Optional[str] = Field(default=None, description="Nome do tipo: INCOME | EXPENSES | TRANSFER.")
+
+@tool("add_transaction", args_schema=AddTransactionArgs)
 def add_transaction(
     amount: float,
     source_text: str,
+    category_id: Optional[int],
+    type_id: Optional[int],
     occurred_at: Optional[str] = None,
-    type_id: Optional[int] = None,
     type_name: Optional[str] = None,
-    category_id: Optional[int] = None,
     description: Optional[str] = None,
     payment_method: Optional[str] = None,
 ) -> dict:
@@ -19,12 +28,19 @@ def add_transaction(
 
     log_info("Starting transaction insertion")
 
+    # Printando argumentos recebidos para debug
+    log_debug(f"Received arguments: amount={amount}, source_text='{source_text}', category_id={category_id}, type_id={type_id}, occurred_at='{occurred_at}', type_name='{type_name}', description='{description}', payment_method='{payment_method}'")
+
+    # printando aliases para debug
+    log_debug(f"Type aliases: {ALIASES['type_aliases']}")
+    log_debug(f"Category aliases: {ALIASES['category_aliases']}")
+
     with Database.get_conn() as conn:
         with conn.cursor() as cur:
             try:
-                resolved_type_id = ALIAS_SERVICE.resolve_type_id(type_id, type_name)
+                resolved_type_id = ALIAS_SERVICE.resolve_type_id(type_name, type_id)
 
-                if not resolved_type_id:
+                if resolved_type_id is None:
                     string = ""
                     for key, value in ALIASES["type_aliases"].items():
                         string += f"{value} (id: {key}); "
@@ -37,7 +53,7 @@ def add_transaction(
                     log_warning("Transaction rejected due to invalid type")
                     raise error
 
-                resolved_category_id = ALIAS_SERVICE.resolve_category_id(category_id)
+                resolved_category_id = ALIAS_SERVICE.resolve_category_id(category_id=category_id)
 
                 if not resolved_category_id:
                     string = ""

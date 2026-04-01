@@ -9,4 +9,3 @@ class ReadTransactionsFilter(Enum):
     LAST_DAYS = 2
     AMOUNT_GREATER_THAN = 3
     AMOUNT_LOWER_THAN = 4
-    DESCRIPTION_OR_SOURCE_TEXT_CONTAINS = 5

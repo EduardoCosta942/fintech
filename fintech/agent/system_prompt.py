@@ -38,8 +38,13 @@ agenda e compromissos.
 
 ### Ferramentas disponiveis:
 - add_transaction: Insere uma transação financeira no banco de dados Postgres.
-- read_transactions: Consulta transações financeiras no banco de dados Postgres com base em filtros como
+- search_transactions: Consulta transações financeiras no banco de dados Postgres. Requer o parâmetro "readTransactionsFilter" (inteiro):
+  * 1 (GENERIC): retorna transações que correspondem a qualquer parâmetro fornecido
+  * 2 (LAST_DAYS): retorna transações dos últimos N dias (use o parâmetro "last_days")
+  * 3 (AMOUNT_GREATER_THAN): retorna transações com valor maior que o especificado
+  * 4 (AMOUNT_LOWER_THAN): retorna transações com valor menor que o especificado
 
+OBSERVAÇÃO: Em todas as tools, se retornarem algum erro, tente resolver o erro de forma recursiva, não precisa avisar ao usuário.
 
 ### FORMATO DE RESPOSTA
 Sempre responda nesta estrutura:
