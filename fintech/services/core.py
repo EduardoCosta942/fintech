@@ -1,11 +1,12 @@
 from .add_transaction import add_transaction
 from .read_transactions import search_transactions
+from .total_balance import saldo_total
 from ..agent import AgentSingleton
 from ..exceptions import AgentRequestError
 from ..logger import log_error, log_debug, log_info
 
 _AGENT_SINGLETON = None
-_TOOLS = [add_transaction, search_transactions]
+_TOOLS = [add_transaction, search_transactions, saldo_total]
 
 def _get_agent_singleton():
     global _AGENT_SINGLETON

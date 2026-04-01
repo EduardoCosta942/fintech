@@ -1,4 +1,3 @@
-import psycopg2
 from typing import Optional
 from langchain.tools import tool
 from dataclasses import dataclass
