@@ -2,9 +2,9 @@ import logging
 import sys
 from typing import Optional
 
-from fintech.enum import Environment
-from fintech.env_loader import get_env_variable
-from fintech.exceptions import EnvNotFoundError
+from assessor_ai.enum import Environment
+from assessor_ai.env_loader import get_env_variable
+from assessor_ai.exceptions import EnvNotFoundError
 
 
 class _ColoredFormatter(logging.Formatter):

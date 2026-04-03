@@ -1,20 +1,16 @@
-from .add_transaction import add_transaction
-from .read_transactions import search_transactions
-from .total_balance import saldo_total
-from .diary_balance import saldo_diario
 from ..agent import AgentSingleton
 from ..exceptions import AgentRequestError
-from ..logger import log_error, log_debug, log_info
+from ..logger import log_debug, log_info, log_error
+from .pg_tools import TOOLS
 
 _AGENT_SINGLETON = None
-_TOOLS = [add_transaction, search_transactions, saldo_total, saldo_diario]
 
 def _get_agent_singleton():
     global _AGENT_SINGLETON
 
     if _AGENT_SINGLETON is None:
         log_info("Initializing AgentFactory instance")
-        _AGENT_SINGLETON = AgentSingleton(_TOOLS).agent
+        _AGENT_SINGLETON = AgentSingleton(TOOLS).agent
         return
     
     log_debug("Reusing existing AgentFactory instance")
@@ -38,5 +34,5 @@ def request(user_prompt: str):
         return response
 
     except Exception as e:
-        log_error(str(e))
+        log_error(f"Request failed with handled exception: {str(e)}")
         raise AgentRequestError(f"An error occurred while processing the request: {str(e)}")

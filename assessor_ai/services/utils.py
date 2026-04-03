@@ -76,5 +76,14 @@ class AliasService:
         log_warning("Invalid category_id provided")
         return None
 
+def format_date(value):
+    if value is None:
+        return None
+
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+
+    return str(value)
+
 ALIASES = AliasRepository.load_aliases()
 ALIAS_SERVICE = AliasService()

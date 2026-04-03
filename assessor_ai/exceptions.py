@@ -27,3 +27,15 @@ class UnresolvedVariableError(Exception):
     def __init__(self, message="Unresolved variable in the input"):
         self.message = message
         super().__init__(self.message)
+
+class InvalidAliasError(Exception):
+    def __init__(self, alias: dict, base_message: str):
+        # Build message
+        string = base_message + " | Try again using: "
+
+        for key, value in alias.items():
+            string += f"{value} (id: {key}); "
+
+        self.message = string.rstrip('; ')
+
+        super().__init__(self.message)

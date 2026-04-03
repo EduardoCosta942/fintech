@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 from pathlib import Path
 import os
 
-from fintech.exceptions import EnvNotFoundError
+from assessor_ai.exceptions import EnvNotFoundError
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
