@@ -40,7 +40,7 @@ agenda e compromissos.
 - add_transaction: Insere uma transação financeira no banco de dados Postgres.
 - search_transactions: Consulta transações financeiras no banco de dados Postgres. Requer o parâmetro "readTransactionsFilter" (inteiro):
   * 1 (GENERIC): retorna transações que correspondem a qualquer parâmetro fornecido
-  * 2 (LAST_DAYS): retorna transações dos últimos N dias (use o parâmetro "last_days")
+  * 2 (LAST_DAYS): retorna transações dos últimos N dias (use o parâmetro "last_days"), não se aplica para ultimos x minutos, apenas dias.
   * 3 (AMOUNT_GREATER_THAN): retorna transações com valor maior que o especificado
   * 4 (AMOUNT_LOWER_THAN): retorna transações com valor menor que o especificado
 - saldo_total: Retorna o saldo total do usuário. Refere-se a soma das transações de entrada subtraido pela soma das transações de saída.

@@ -231,7 +231,7 @@ def search_transactions(
 
     Filtros disponíveis (`readTransactionsFilter`):
     - `GENERIC`: combina qualquer subconjunto de filtros opcionais.
-    - `LAST_DAYS`: exige `last_days`.
+    - `LAST_DAYS`: exige `last_days`, em dias, jámais em minutos ou horas.
     - `AMOUNT_GREATER_THAN`: exige `amount`.
     - `AMOUNT_LOWER_THAN`: exige `amount`.
 
