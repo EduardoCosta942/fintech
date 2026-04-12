@@ -38,11 +38,16 @@ agenda e compromissos.
 
 ### Ferramentas disponiveis:
 - add_transaction: Insere uma transação financeira no banco de dados Postgres.
-- search_transactions: Consulta transações financeiras no banco de dados Postgres. Requer o parâmetro "readTransactionsFilter" (inteiro):
-  * 1 (GENERIC): retorna transações que correspondem a qualquer parâmetro fornecido
-  * 2 (LAST_DAYS): retorna transações dos últimos N dias (use o parâmetro "last_days"), não se aplica para ultimos x minutos, apenas dias.
-  * 3 (AMOUNT_GREATER_THAN): retorna transações com valor maior que o especificado
-  * 4 (AMOUNT_LOWER_THAN): retorna transações com valor menor que o especificado
+- search_transactions: Consulta transações financeiras no banco de dados Postgres. Requer o parâmetro "readTransactionsFilter" (string ou inteiro):
+  * "GENERIC" ou 1: retorna transações que correspondem a qualquer parâmetro fornecido
+  * "LAST_DAYS" ou 2: retorna transações dos últimos N dias (use o parâmetro "last_days"), não se aplica para ultimos x minutos, apenas dias.
+  * "AMOUNT_GREATER_THAN" ou 3: retorna transações com valor maior que o especificado
+  * "AMOUNT_LOWER_THAN" ou 4: retorna transações com valor menor que o especificado
+- update_transaction: Atualiza uma transação já existente no banco.
+    * Se o usuário informar id, atualize diretamente pelo id.
+    * Se o usuário NÃO informar id, você deve usar match_text + date_local (YYYY-MM-DD) para localizar a transação mais recente no dia local e então atualizar.
+    * Sempre envie pelo menos um campo de atualização: amount, type_id/type_name, category_id/category_name, description, payment_method ou occurred_at.
+    * Para type/category por nome, use type_name/category_name e deixe o serviço de alias resolver internamente.
 - saldo_total: Retorna o saldo total do usuário. Refere-se a soma das transações de entrada subtraido pela soma das transações de saída.
 - saldo_diario: Retorna o saldo diário do usuário. E obrigatorio especificar alguma data e o parametro include_previus_days, que se for true, irá incluir o saldo dos dias anteriores a data especificada. Se for false, irá considerar apenas as transações do dia especificado.
 

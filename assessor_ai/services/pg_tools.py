@@ -1,8 +1,8 @@
-from typing import Optional
+from typing import List, Optional, Union
 from datetime import datetime
 from dataclasses import dataclass
 
-from pydantic import Field, validator
+from pydantic import BaseModel, Field, validator
 from langchain.tools import tool
 
 from ..enum import ReadTransactionsFilter
@@ -168,34 +168,37 @@ def add_transaction(
                 return {"status": "error", "message": str(e)}
 
 def _normalize_read_transactions_filter(value) -> ReadTransactionsFilter:
-    """Normalize dynamic inputs into a valid `ReadTransactionsFilter`."""
+    """Normalize dynamic inputs into a valid `ReadTransactionsFilter`.
+    
+    Supports: ReadTransactionsFilter enum, string names (e.g., 'GENERIC'), 
+    and legacy integer values (1, 2, 3, 4) for backward compatibility.
+    """
     if isinstance(value, ReadTransactionsFilter):
         return value
 
-    if isinstance(value, int):
-        try:
-            return ReadTransactionsFilter(value)
-        except ValueError:
-            raise UnavalableFilterError(f"Filter not available: {value}")
-
     if isinstance(value, str):
-        text = value.strip()
-
-        if text.isdigit():
-            try:
-                return ReadTransactionsFilter(int(text))
-            except ValueError:
-                raise UnavalableFilterError(f"Filter not available: {value}")
-
+        text = value.strip().upper()
         try:
-            return ReadTransactionsFilter[text.upper()]
+            return ReadTransactionsFilter[text]
         except KeyError:
             raise UnavalableFilterError(f"Filter not available: {value}")
+
+    if isinstance(value, int):
+        # Legacy integer mapping for backward compatibility with Groq
+        legacy_mapping = {
+            1: ReadTransactionsFilter.GENERIC,
+            2: ReadTransactionsFilter.LAST_DAYS,
+            3: ReadTransactionsFilter.AMOUNT_GREATER_THAN,
+            4: ReadTransactionsFilter.AMOUNT_LOWER_THAN,
+        }
+        if value in legacy_mapping:
+            return legacy_mapping[value]
+        raise UnavalableFilterError(f"Filter not available: {value}")
 
     raise UnavalableFilterError(f"Filter not available: {value}")
 
 class ReadTransactionArgs(Transaction):
-    readTransactionsFilter: ReadTransactionsFilter # Set mandatory
+    readTransactionsFilter: Union[ReadTransactionsFilter, str, int] # Set mandatory
     type_name: Optional[str] = None # not in database, external representation of type_id
     category_name: Optional[str] = None # not in database, external representation of category_id
     last_days: Optional[int] = None # not in database, used only when readTransactionsFilter is LAST_DAYS
@@ -471,6 +474,178 @@ def saldo_total() -> dict:
             except Exception as e:
                 log_error(f"Issue calculating total balance (handled response): {e}")
                 return {"status": "error", "message": str(e)}
-            
+
+def _local_date_filter_sql(field: str = "occurred_at") -> str:
+    """
+    Retorna um trecho SQL para filtragem por dia local em America/Sao_Paulo.
+    Ex.: (occurred_at AT TIME ZONE 'America/Sao_Paulo')::date = %s::date
+    """
+    return f"(({field} AT TIME ZONE 'America/Sao_Paulo')::date = %s::date)"
+
+class UpdateTransactionArgs(BaseModel):
+    id: Optional[int] = Field(
+        default=None,
+        description="ID da transação a atualizar. Se ausente, será feita uma busca por (match_text + date_local)."
+    )
+    match_text: Optional[str] = Field(
+        default=None,
+        description="Texto para localizar transação quando id não for informado (busca em source_text/description)."
+    )
+    date_local: Optional[str] = Field(
+        default=None,
+        description="Data local (YYYY-MM-DD) em America/Sao_Paulo; usado em conjunto com match_text quando id ausente."
+    )
+    amount: Optional[float] = Field(default=None, description="Novo valor.")
+    type_id: Optional[int] = Field(default=None, description="Novo type_id (1/2/3).")
+    type_name: Optional[str] = Field(default=None, description="Novo type_name: INCOME | EXPENSES | TRANSFER.")
+    category_id: Optional[int] = Field(default=None, description="Nova categoria (id).")
+    category_name: Optional[str] = Field(default=None, description="Nova categoria (nome).")
+    description: Optional[str] = Field(default=None, description="Nova descrição.")
+    payment_method: Optional[str] = Field(default=None, description="Novo meio de pagamento.")
+    occurred_at: Optional[str] = Field(default=None, description="Novo timestamp ISO 8601.")
+
+@tool("update_transaction", args_schema=UpdateTransactionArgs)
+def update_transaction(
+    id: Optional[int] = None,
+    match_text: Optional[str] = None,
+    date_local: Optional[str] = None,
+    amount: Optional[float] = None,
+    type_id: Optional[int] = None,
+    type_name: Optional[str] = None,
+    category_id: Optional[int] = None,
+    category_name: Optional[str] = None,
+    description: Optional[str] = None,
+    payment_method: Optional[str] = None,
+    occurred_at: Optional[str] = None,
+) -> dict:
+    """
+    Atualiza uma transação existente.
+    Estratégias:
+      - Se 'id' for informado: atualiza diretamente por ID.
+      - Caso contrário: localiza a transação mais recente que combine (match_text em source_text/description)
+        E (date_local em America/Sao_Paulo), então atualiza.
+    Retorna: status, rows_affected, id, e o registro atualizado.
+    """
+    if not any([amount, type_id, type_name, category_id, category_name, description, payment_method, occurred_at]):
+        return {"status": "error", "message": "Nada para atualizar: forneça pelo menos um campo (amount, type, category, description, payment_method, occurred_at)."}
+
+    conn = Database.get_conn()
+    cur = conn.cursor()
+    try:
+        # Resolve target_id
+        target_id = id
+        if target_id is None:
+            if not match_text or not date_local:
+                return {"status": "error", "message": "Sem 'id': informe match_text E date_local para localizar o registro."}
+
+            # Buscar o mais recente no dia local informado que combine o texto
+            cur.execute(
+                f"""
+                SELECT t.id
+                FROM transactions t
+                WHERE (t.source_text ILIKE %s OR t.description ILIKE %s)
+                  AND {_local_date_filter_sql("t.occurred_at")}
+                ORDER BY t.occurred_at DESC
+                LIMIT 1;
+                """,
+                (f"%{match_text}%", f"%{match_text}%", date_local)
+            )
+            row = cur.fetchone()
+            if not row:
+                return {"status": "error", "message": "Nenhuma transação encontrada para os filtros fornecidos."}
+            target_id = row[0]
+
+        # Resolver type_id / category_id a partir de nomes, se fornecidos
+        resolved_type_id = None
+        if type_id is not None or type_name is not None:
+            resolved_type_id = ALIAS_SERVICE.resolve_type_id(type_name=type_name, type_id=type_id)
+            if resolved_type_id is None:
+                return {"status": "error", "message": "Tipo inválido: informe type_id ou type_name válido."}
+
+        resolved_category_id = None
+        if category_id is not None or category_name is not None:
+            resolved_category_id = ALIAS_SERVICE.resolve_category_id(category_id=category_id, category_name=category_name)
+            if resolved_category_id is None:
+                return {"status": "error", "message": "Categoria inválida: informe category_id ou category_name válido."}
+
+        # Montar SET dinâmico
+        sets = []
+        params: List[object] = []
+        if amount is not None:
+            sets.append("amount = %s")
+            params.append(amount)
+        if resolved_type_id is not None:
+            sets.append("type = %s")
+            params.append(resolved_type_id)
+        if resolved_category_id is not None:
+            sets.append("category_id = %s")
+            params.append(resolved_category_id)
+        if description is not None:
+            sets.append("description = %s")
+            params.append(description)
+        if payment_method is not None:
+            sets.append("payment_method = %s")
+            params.append(payment_method)
+        if occurred_at is not None:
+            sets.append("occurred_at = %s::timestamptz")
+            params.append(occurred_at)
+
+        if not sets:
+            return {"status": "error", "message": "Nenhum campo válido para atualizar."}
+
+        params.append(target_id)
+
+        cur.execute(
+            f"UPDATE transactions SET {', '.join(sets)} WHERE id = %s;",
+            params
+        )
+        rows_affected = cur.rowcount
+        conn.commit()
+
+        # Retornar o registro atualizado
+        cur.execute(
+            """
+            SELECT
+              t.id, t.occurred_at, t.amount, tt.type AS type_name,
+              c.name AS category_name, t.description, t.payment_method, t.source_text
+            FROM transactions t
+            JOIN transaction_types tt ON tt.id = t.type
+            LEFT JOIN categories c ON c.id = t.category_id
+            WHERE t.id = %s;
+            """,
+            (target_id,)
+        )
+        r = cur.fetchone()
+        updated = None
+        if r:
+            updated = {
+                "id": r[0],
+                "occurred_at": str(r[1]),
+                "amount": float(r[2]),
+                "type": r[3],
+                "category": r[4],
+                "description": r[5],
+                "payment_method": r[6],
+                "source_text": r[7],
+            }
+
+        return {
+            "status": "ok",
+            "rows_affected": rows_affected,
+            "id": target_id,
+            "updated": updated
+        }
+
+    except Exception as e:
+        conn.rollback()
+        return {"status": "error", "message": str(e)}
+    finally:
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+
 # Define tools:
-TOOLS = [add_transaction, search_transactions, saldo_total, saldo_diario]
+TOOLS = [add_transaction, search_transactions, saldo_total, saldo_diario, update_transaction]

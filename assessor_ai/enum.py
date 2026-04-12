@@ -4,8 +4,8 @@ class Environment(Enum):
     DEVELOPMENT = auto()
     PRODUCTION = auto()
 
-class ReadTransactionsFilter(Enum):
-    GENERIC = 1
-    LAST_DAYS = 2
-    AMOUNT_GREATER_THAN = 3
-    AMOUNT_LOWER_THAN = 4
+class ReadTransactionsFilter(str, Enum):
+    GENERIC = "GENERIC"
+    LAST_DAYS = "LAST_DAYS"
+    AMOUNT_GREATER_THAN = "AMOUNT_GREATER_THAN"
+    AMOUNT_LOWER_THAN = "AMOUNT_LOWER_THAN"

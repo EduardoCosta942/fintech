@@ -22,6 +22,6 @@ while True:
 
     try:
         response = request(user_prompt)
-        print(response['messages'][-1].content)
+        print(response['messages'][-1].text)
     except Exception as e:
         print(str(e))
